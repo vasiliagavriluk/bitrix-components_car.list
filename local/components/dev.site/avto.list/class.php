@@ -80,21 +80,23 @@ class ExampleCompSimple extends CBitrixComponent {
                 $_IBLOCK_ID = $ar_fields["IBLOCK_ID"];
             }
 
-            $_KAT_KOM_ID = [];
+            $_CarArrayID = [];
             $arFilter = Array("ID"=>$arUser["UF_JOB"]);
             $get_info = CIBlockElement::GetPropertyValues(IntVal($_IBLOCK_ID), $arFilter);
-            while ($row = $get_info->Fetch())
+            while ($row = $get_info->Fetch()) //получили id категории комфорта
             {
-                foreach ($row[11] as &$value)
+                //проверяем если массив
+                if (is_array($row))
                 {
-                    $_KAT_KOM_ID[] = $value; //получили id категории комфорта
+                    foreach ($row[4] as &$value)
+                    {
+                        $_CarArrayID[] = $this->_checkAllCarKat($value);
+                    }
                 }
-            }
-
-            $_CarArrayID = [];
-            foreach ($_KAT_KOM_ID as &$value)
-            {
-                $_CarArrayID[] = $this->_checkAllCarKat($value);
+                else
+                {
+                    $_CarArrayID[] = $this->_checkAllCarKat($row[4]);
+                }
             }
 
             return $_CarArrayID;
@@ -104,8 +106,9 @@ class ExampleCompSimple extends CBitrixComponent {
         private function _checkAllCarKat($_KAT_KOM_ID)
         {
             $_CarArrayID = [];
-            $arSelect = Array("ID","IBLOCK_ID","ACTIVE","NAME","ACTIVE_FROM","ACTIVE_TO","PROPERTY_COMFORT_CATEGORY");
-            $arFilter = Array("IBLOCK_CODE"=>"MODEL_AVTO","PROPERTY_COMFORT_CATEGORY"=>IntVal($_KAT_KOM_ID));
+            $arSelect = Array("ID");
+            $arFilter = Array("IBLOCK_CODE" => "MODEL_AVTO", "PROPERTY_COMFORT_CATEGORY"=>IntVal($_KAT_KOM_ID));
+
             $get_info = CIBlockElement::GetList(Array(), $arFilter,$arSelect);
 
             while($ob = $get_info->GetNext(true, false))
@@ -125,20 +128,27 @@ class ExampleCompSimple extends CBitrixComponent {
             $data_finish = date("d.m.Y H:i:s", $d2); // переводит в новый формат
 
             $_CarArray = [];
+
             $arSelect = Array("ID","IBLOCK_ID","ACTIVE","NAME","DATE_ACTIVE_FROM","DATE_ACTIVE_TO","PROPERTY_USERS","PROPERTY_CAR");
-            $arFilter = Array("IBLOCK_CODE"=>"BUSINESS_TRAVEL","PROPERTY_CAR"=>IntVal($ID_CAR),
-                array("!ACTIVE_TO" => "Y"),
-            );
+            $arFilter = Array("IBLOCK_CODE"=>"BUSINESS_TRAVEL","PROPERTY_CAR"=>IntVal($ID_CAR));
 
             $get_info = CIBlockElement::GetList(Array(), $arFilter,$arSelect);
 
             while($ob = $get_info->GetNext(true, false))
             {
-                $DATE_ACTIVE_TO   = $ob["DATE_ACTIVE_TO"];
+                $DATE_ACTIVE_FROM   = $ob["DATE_ACTIVE_FROM"];
+                $DATE_ACTIVE_TO     = $ob["DATE_ACTIVE_TO"];
 
-                if (($DATE_ACTIVE_TO > $data_start && $DATE_ACTIVE_TO < $data_finish))
+                //если дата окончания активности пустая то задаем текущую дату и время
+                if (!$DATE_ACTIVE_TO){ $DATE_ACTIVE_TO = date("d.m.Y H:i:s"); }
+
+                //проверяем входит в диапазон
+                if ($data_start >= $DATE_ACTIVE_FROM || $data_finish >= $DATE_ACTIVE_FROM)
                 {
-                    $_CarArray[] = $ob["PROPERTY_CAR_VALUE"];
+                    if ($data_finish <= $DATE_ACTIVE_TO || $data_start <= $DATE_ACTIVE_TO)
+                    {
+                        $_CarArray[] = $ob["PROPERTY_CAR_VALUE"];
+                    }
                 }
             }
 
@@ -236,3 +246,6 @@ class ExampleCompSimple extends CBitrixComponent {
            // $this->includeComponentTemplate();
         }
 }
+
+
+
